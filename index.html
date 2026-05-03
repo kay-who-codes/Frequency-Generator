@@ -540,7 +540,7 @@
 
   /* ─── Set frequency (live or on next play) ──────────────────── */
   function setFrequency(hz, fromPreset = false) {
-    hz = Math.min(20000, Math.max(20, hz));
+    hz = Math.min(2000000, Math.max(1, hz));
     currentHz = hz;
     updateBadge(hz);
     if (oscillator) oscillator.frequency.setTargetAtTime(hz, audioCtx.currentTime, 0.02);
@@ -674,7 +674,7 @@
   /* ─── Event: Custom frequency set ───────────────────────────── */
   function applyCustom() {
     const val = parseFloat(customHz.value);
-    if (!isNaN(val) && val >= 20 && val <= 20000) {
+    if (!isNaN(val) && val >= 1 && val <= 2000000) {
       setFrequency(val, false); // clears all preset highlights, doesn't touch the input
     }
   }
