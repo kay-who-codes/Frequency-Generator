@@ -1,702 +1,1064 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Frequency Generator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet" />
-  <style>
-    /* ─── CSS Variables ──────────────────────────────────────── */
-    :root {
-      --bg:              #131313;
-      --surface:         #1c1c1c;
-      --surface-2:       #242424;
-      --border:          #2e2e2e;
-      --text:            #e8e8e8;
-      --text-dim:        #888;
-      --primary:         #4caf50;
-      --primary-glow:    rgba(76,175,80,.30);
-      --primary-dim:     rgba(76,175,80,.12);
-      --secondary:       #ff4081;
-      --secondary-glow:  rgba(255,64,129,.25);
-      --radius:          16px;
-      --radius-sm:       10px;
-      --transition:      .25s cubic-bezier(.4,0,.2,1);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FreqGen — Signal Frequency Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
 
-    /* ─── Reset ─────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+  :root {
+    --bg: #131313;
+    --bg-elevated: #1c1c1c;
+    --bg-card: #1f1f1f;
+    --surface: #252525;
+    --surface-hover: #2e2e2e;
+    --border: #333;
+    --primary: #4caf50;
+    --primary-dim: rgba(76, 175, 80, 0.14);
+    --primary-glow: rgba(76, 175, 80, 0.4);
+    --secondary: #ff4081;
+    --secondary-dim: rgba(255, 64, 129, 0.15);
+    --text: #e8e8e8;
+    --text-muted: #888;
+    --text-dim: #555;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Rajdhani', sans-serif;
+    --radius: 4px;
+    --radius-lg: 8px;
+    --transition: 0.2s ease;
+  }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: clamp(16px, 4vw, 48px);
-      overflow-x: hidden;
-    }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
 
-    /* ─── Ambient background orbs ───────────────────────────── */
-    body::before, body::after {
-      content: '';
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(120px);
-      pointer-events: none;
-      z-index: 0;
-    }
-    body::before {
-      width: 480px; height: 480px;
-      background: var(--primary-glow);
-      top: -120px; left: -120px;
-    }
-    body::after {
-      width: 360px; height: 360px;
-      background: var(--secondary-glow);
-      bottom: -80px; right: -80px;
-    }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
 
-    /* ─── Card ───────────────────────────────────────────────── */
-    .card {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 520px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: clamp(24px, 6vw, 48px);
-      box-shadow: 0 32px 80px rgba(0,0,0,.55);
-      animation: fadeUp .6s cubic-bezier(.4,0,.2,1) both;
-    }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(76,175,80,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(76,175,80,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
 
-    @keyframes fadeUp {
-      from { opacity:0; transform:translateY(28px); }
-      to   { opacity:1; transform:translateY(0); }
-    }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
 
-    /* ─── Header ─────────────────────────────────────────────── */
-    header {
-      text-align: center;
-      margin-bottom: 36px;
-    }
+  main {
+    width: 100%;
+    max-width: 680px;
+    padding: 2rem 1.25rem 4rem;
+    position: relative;
+    z-index: 1;
+  }
 
-    .logo-mark {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 56px; height: 56px;
-      background: var(--primary-dim);
-      border: 1.5px solid var(--primary);
-      border-radius: 14px;
-      margin-bottom: 16px;
-      box-shadow: 0 0 24px var(--primary-glow);
-    }
-    .logo-mark svg { width: 28px; height: 28px; }
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 2.25rem;
+    padding-top: 0.5rem;
+  }
 
-    h1 {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: clamp(1.5rem, 5vw, 2rem);
-      letter-spacing: -.02em;
-      color: #fff;
-    }
-    h1 span { color: var(--primary); }
+  .logo-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+  }
 
-    .subtitle {
-      margin-top: 6px;
-      font-size: .75rem;
-      color: var(--text-dim);
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
+  .logo-svg { width: 30px; height: 30px; flex-shrink: 0; }
 
-    /* ─── Visualiser ─────────────────────────────────────────── */
-    .visualiser-wrap {
-      position: relative;
-      height: 80px;
-      margin-bottom: 28px;
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-    }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(1.7rem, 5.5vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text);
+    line-height: 1;
+  }
 
-    canvas#viz {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
+  h1 span { color: var(--primary); }
 
-    .freq-badge {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%,-50%);
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: clamp(1.4rem, 6vw, 2.2rem);
-      color: #fff;
-      text-shadow: 0 0 20px var(--primary-glow);
-      letter-spacing: -.03em;
-      pointer-events: none;
-      transition: var(--transition);
-    }
-    .freq-badge small {
-      font-size: .45em;
-      color: var(--primary);
-      margin-left: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 400;
-    }
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
 
-    /* ─── Presets ────────────────────────────────────────────── */
-    .section-label {
-      font-size: .68rem;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 10px;
-    }
+  /* Oscilloscope */
+  .oscilloscope {
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.25rem;
+    padding: 0.75rem;
+    position: relative;
+    overflow: hidden;
+  }
 
-    .presets {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-      gap: 8px;
-      margin-bottom: 24px;
-    }
+  .oscilloscope::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(76,175,80,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
 
-    .preset-btn {
-      min-height: 52px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: .78rem;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      transition: var(--transition);
-      padding: 8px 4px;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .preset-btn .hz-val {
-      font-weight: 600;
-      font-size: .85rem;
-      color: #fff;
-    }
-    .preset-btn .hz-name {
-      font-size: .62rem;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
+  canvas#scope {
+    width: 100%;
+    height: 120px;
+    display: block;
+    border-radius: var(--radius);
+  }
 
-    .preset-btn:hover {
-      border-color: var(--primary);
-      background: var(--primary-dim);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px var(--primary-glow);
-    }
-    .preset-btn.active {
-      border-color: var(--primary);
-      background: var(--primary-dim);
-      box-shadow: 0 0 0 1px var(--primary), 0 8px 28px var(--primary-glow);
-      color: var(--primary);
-    }
-    .preset-btn.active .hz-val { color: var(--primary); }
+  .scope-label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.4rem;
+    text-align: center;
+  }
 
-    /* ─── Custom input ───────────────────────────────────────── */
-    .custom-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 24px;
-    }
+  /* Frequency readout */
+  .freq-display {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    text-align: center;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
 
-    .input-wrap {
-      flex: 1;
-      position: relative;
-    }
-    .input-wrap input[type="number"] {
-      width: 100%;
-      height: 52px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1rem;
-      padding: 0 52px 0 16px;
-      outline: none;
-      transition: var(--transition);
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    .input-wrap input[type="number"]::-webkit-inner-spin-button,
-    .input-wrap input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
-    .input-wrap input[type="number"]:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px var(--primary-dim);
-    }
-    .input-unit {
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: .72rem;
-      color: var(--primary);
-      letter-spacing: .06em;
-      pointer-events: none;
-    }
+  .freq-display.playing {
+    border-color: var(--primary);
+    box-shadow: 0 0 24px var(--primary-dim), inset 0 0 30px rgba(76,175,80,0.02);
+  }
 
-    .set-btn {
-      height: 52px;
-      padding: 0 20px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: .8rem;
-      cursor: pointer;
-      transition: var(--transition);
-      white-space: nowrap;
-      min-width: 48px;
-    }
-    .set-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: var(--primary-dim);
-    }
+  .freq-readout {
+    font-family: var(--mono);
+    font-size: clamp(2.4rem, 10vw, 4rem);
+    font-weight: 400;
+    color: var(--primary);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-shadow: 0 0 20px var(--primary-glow);
+    transition: text-shadow var(--transition);
+  }
 
-    /* ─── Play / Pause ───────────────────────────────────────── */
-    .controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
+  .freq-readout.playing {
+    text-shadow: 0 0 30px var(--primary-glow), 0 0 60px rgba(76,175,80,0.2);
+  }
 
-    .play-btn {
-      flex: 1;
-      height: 60px;
-      border-radius: var(--radius-sm);
-      border: none;
-      background: var(--primary);
-      color: #000;
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 1rem;
-      letter-spacing: .04em;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      transition: var(--transition);
-      box-shadow: 0 8px 28px var(--primary-glow);
-      -webkit-tap-highlight-color: transparent;
-    }
-    .play-btn:hover {
-      background: #66bb6a;
-      transform: translateY(-2px);
-      box-shadow: 0 14px 40px var(--primary-glow);
-    }
-    .play-btn:active { transform: translateY(0); }
-    .play-btn.playing {
-      background: var(--secondary);
-      box-shadow: 0 8px 28px var(--secondary-glow);
-      color: #fff;
-    }
-    .play-btn.playing:hover {
-      background: #ff6fa0;
-      box-shadow: 0 14px 40px var(--secondary-glow);
-    }
+  .freq-unit {
+    font-family: var(--mono);
+    font-size: clamp(0.8rem, 3vw, 1rem);
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-top: 0.2rem;
+  }
 
-    .play-btn .btn-icon { font-size: 1.2rem; line-height: 1; }
+  .freq-note {
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    margin-top: 0.45rem;
+    min-height: 1em;
+  }
 
-    /* volume */
-    .vol-wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      min-width: 48px;
-    }
-    .vol-wrap label {
-      font-size: .6rem;
-      color: var(--text-dim);
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 48px;
-      height: 6px;
-      background: var(--border);
-      border-radius: 3px;
-      outline: none;
-      cursor: pointer;
-      writing-mode: vertical-lr;
-      direction: rtl;
-      width: 6px;
-      height: 60px;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      background: var(--primary);
-      box-shadow: 0 0 8px var(--primary-glow);
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-thumb {
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      background: var(--primary);
-      border: none;
-      cursor: pointer;
-    }
+  /* Play button */
+  .play-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
 
-    /* ─── Wave type selector ─────────────────────────────────── */
-    .wave-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 20px;
-    }
-    .wave-btn {
-      flex: 1;
-      height: 36px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text-dim);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: .72rem;
-      cursor: pointer;
-      transition: var(--transition);
-      letter-spacing: .04em;
-      min-width: 48px;
-    }
-    .wave-btn:hover { border-color: var(--primary); color: var(--text); }
-    .wave-btn.active {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: var(--primary-dim);
-    }
+  .play-btn {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    border: 2px solid var(--primary);
+    background: var(--primary-dim);
+    color: var(--primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+  }
 
-    /* ─── Footer ─────────────────────────────────────────────── */
-    footer {
-      margin-top: 20px;
-      text-align: center;
-      font-size: .65rem;
-      color: #3a3a3a;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
+  .play-btn::before {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    border: 1px solid rgba(76,175,80,0.2);
+    transition: all 0.3s ease;
+  }
 
-    /* ─── Pulse ring on visualiser ───────────────────────────── */
-    @keyframes pulseRing {
-      0%   { box-shadow: 0 0 0 0 var(--primary-glow); }
-      70%  { box-shadow: 0 0 0 10px transparent; }
-      100% { box-shadow: 0 0 0 0 transparent; }
-    }
-    .visualiser-wrap.playing { animation: pulseRing 1.4s infinite; }
+  .play-btn:hover {
+    background: rgba(76,175,80,0.22);
+    box-shadow: 0 0 28px var(--primary-glow);
+    transform: scale(1.05);
+  }
 
-    /* ─── Responsive ─────────────────────────────────────────── */
-    @media (max-width: 380px) {
-      .presets { grid-template-columns: repeat(3, 1fr); }
-      .card { padding: 20px 16px; }
-    }
-  </style>
+  .play-btn:hover::before { inset: -12px; border-color: rgba(76,175,80,0.1); }
+
+  .play-btn.playing {
+    animation: pulse-ring 2.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 18px var(--primary-glow); }
+    50% { box-shadow: 0 0 40px var(--primary-glow), 0 0 70px rgba(76,175,80,0.12); }
+  }
+
+  /* Input section */
+  section.input-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Waveform */
+  .wave-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .wave-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 0.55rem 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .wave-btn svg {
+    width: 28px;
+    height: 13px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .wave-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .wave-btn.active { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+
+  /* Custom input row */
+  .custom-input-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .input-wrapper { flex: 1; position: relative; }
+
+  input[type="number"] {
+    width: 100%;
+    height: 52px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    padding: 0 3.5rem 0 1rem;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-dim);
+  }
+
+  input[type="number"]::placeholder { color: var(--text-dim); }
+  input[type="number"].invalid {
+    border-color: var(--secondary) !important;
+    box-shadow: 0 0 0 2px var(--secondary-dim) !important;
+  }
+
+  .hz-badge {
+    position: absolute;
+    right: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    pointer-events: none;
+  }
+
+  .input-error {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--secondary);
+    letter-spacing: 0.1em;
+    margin-top: 0.4rem;
+    min-height: 1em;
+  }
+
+  .apply-btn {
+    height: 52px;
+    padding: 0 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 68px;
+  }
+
+  .apply-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-dim);
+  }
+
+  /* Slider */
+  .slider-row { margin-top: 0.85rem; }
+
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--surface);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(to right, var(--primary) var(--fill,0%), var(--surface) var(--fill,0%));
+  }
+
+  input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface); }
+  input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--primary); }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--bg);
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--primary-glow);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 14px var(--primary-glow);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 8px var(--primary-glow);
+  }
+
+  /* Volume */
+  .volume-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+  }
+
+  .vol-icon { flex-shrink: 0; color: var(--text-dim); width: 16px; }
+
+  input[type="range"].vol-slider { height: 3px; }
+
+  input[type="range"].vol-slider::-webkit-slider-thumb {
+    width: 14px; height: 14px;
+    background: var(--text-muted);
+    box-shadow: none;
+  }
+
+  input[type="range"].vol-slider::-webkit-slider-runnable-track {
+    height: 3px;
+    background: linear-gradient(to right, var(--text-muted) var(--fill,70%), var(--surface) var(--fill,70%));
+  }
+
+  .vol-label {
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    color: var(--text-dim);
+    min-width: 2.5rem;
+    text-align: right;
+    letter-spacing: 0.05em;
+  }
+
+  /* Presets */
+  section.presets-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .preset-group { margin-bottom: 1rem; }
+  .preset-group:last-child { margin-bottom: 0; }
+
+  .preset-group-label {
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    color: var(--text-dim);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+    gap: 0.45rem;
+  }
+
+  .preset-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 0.55rem 0.4rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    line-height: 1.3;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+  }
+
+  .preset-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+  }
+
+  .preset-btn.active {
+    background: var(--primary-dim);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-dim);
+  }
+
+  .preset-btn .preset-hz { font-size: 0.88rem; font-weight: 600; letter-spacing: -0.02em; }
+  .preset-btn .preset-name { font-size: 0.53rem; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .preset-btn.active .preset-name { color: rgba(76,175,80,0.55); }
+
+  /* Status bar */
+  .status-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .status-dot.active {
+    background: var(--primary);
+    box-shadow: 0 0 6px var(--primary);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+
+  .status-value { color: var(--text-muted); }
+
+  /* Responsive */
+  @media (max-width: 440px) {
+    main { padding: 1.25rem 1rem 3rem; }
+    canvas#scope { height: 90px; }
+    .preset-grid { grid-template-columns: repeat(3, 1fr); }
+    .play-btn { width: 76px; height: 76px; }
+    .wave-btn { font-size: 0.55rem; }
+    .status-bar { gap: 0.5rem; }
+  }
+
+  @media (max-width: 360px) {
+    .preset-grid { grid-template-columns: repeat(2, 1fr); }
+    .custom-input-row { flex-direction: column; }
+    .apply-btn { height: 44px; width: 100%; }
+    .wave-row { flex-wrap: wrap; }
+    .wave-btn { flex: 1 1 calc(50% - 0.25rem); }
+  }
+</style>
 </head>
 <body>
+<main>
 
-<main class="card" role="main">
-
-  <!-- Header -->
   <header>
-    <div class="logo-mark" aria-hidden="true">
-      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 14 Q5 4 8 14 Q11 24 14 14 Q17 4 20 14 Q23 24 26 14"
-              stroke="#4caf50" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <div class="logo-line">
+      <svg class="logo-svg" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M1 15 Q5 5 9 15 Q13 25 17 15 Q21 5 25 15 Q27 20 29 15" stroke="#4caf50" stroke-width="2" stroke-linecap="round" fill="none"/>
       </svg>
+      <h1>Freq<span>Gen</span></h1>
     </div>
-    <h1>Freq<span>Gen</span></h1>
-    <p class="subtitle">Tone &amp; Frequency Generator</p>
+    <p class="subtitle">Signal Generator // 1 Hz – 2,000,000 Hz</p>
   </header>
 
-  <!-- Visualiser -->
-  <div class="visualiser-wrap" id="vizWrap" aria-hidden="true">
-    <canvas id="viz"></canvas>
-    <div class="freq-badge" id="freqBadge">440<small>Hz</small></div>
+  <!-- Oscilloscope -->
+  <div class="oscilloscope" aria-hidden="true">
+    <canvas id="scope"></canvas>
+    <div class="scope-label">oscilloscope // real-time waveform preview</div>
   </div>
+
+  <!-- Frequency Readout -->
+  <div class="freq-display" id="freqDisplay" aria-live="polite">
+    <div class="freq-readout" id="freqReadout">440</div>
+    <div class="freq-unit">Hz</div>
+    <div class="freq-note" id="freqNote">A4 — Concert Pitch</div>
+  </div>
+
+  <!-- Play Button -->
+  <div class="play-section">
+    <button class="play-btn" id="playBtn" aria-label="Play frequency tone">
+      <svg id="iconPlay" viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+      <svg id="iconPause" viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true" style="display:none">
+        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Custom Input -->
+  <section class="input-section" aria-label="Custom frequency input">
+    <div class="section-label">Custom Frequency</div>
+
+    <div class="wave-row" role="group" aria-label="Waveform type">
+      <button class="wave-btn active" data-wave="sine" aria-pressed="true">
+        <svg viewBox="0 0 28 13"><path d="M0 6.5 Q3.5 0 7 6.5 Q10.5 13 14 6.5 Q17.5 0 21 6.5 Q24.5 13 28 6.5"/></svg>
+        Sine
+      </button>
+      <button class="wave-btn" data-wave="square" aria-pressed="false">
+        <svg viewBox="0 0 28 13"><path d="M0 10 L0 3 L7 3 L7 10 L14 10 L14 3 L21 3 L21 10 L28 10"/></svg>
+        Square
+      </button>
+      <button class="wave-btn" data-wave="sawtooth" aria-pressed="false">
+        <svg viewBox="0 0 28 13"><path d="M0 10 L7 3 L7 10 L14 3 L14 10 L21 3 L21 10 L28 3"/></svg>
+        Saw
+      </button>
+      <button class="wave-btn" data-wave="triangle" aria-pressed="false">
+        <svg viewBox="0 0 28 13"><path d="M0 10 L7 3 L14 10 L21 3 L28 10"/></svg>
+        Tri
+      </button>
+    </div>
+
+    <div class="custom-input-row">
+      <div class="input-wrapper">
+        <input
+          type="number"
+          id="freqInput"
+          placeholder="e.g. 440"
+          min="1"
+          max="2000000"
+          step="any"
+          inputmode="decimal"
+          aria-label="Frequency in Hz"
+        />
+        <span class="hz-badge">Hz</span>
+      </div>
+      <button class="apply-btn" id="applyBtn">Set</button>
+    </div>
+    <div class="input-error" id="inputError" role="alert" aria-live="polite"></div>
+
+    <div class="slider-row">
+      <div class="slider-labels">
+        <span>1 Hz</span><span>1 kHz</span><span>10 kHz</span><span>2 MHz</span>
+      </div>
+      <input type="range" id="freqSlider" min="0" max="1000" step="0.5" value="376" aria-label="Frequency logarithmic slider">
+    </div>
+
+    <div class="volume-row">
+      <svg class="vol-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 2L4 6H1v4h3l4 4V2z M11.2 4.8a4 4 0 0 1 0 6.4.5.5 0 0 1-.6-.8 3 3 0 0 0 0-4.8.5.5 0 0 1 .6-.8z M13.2 2.8a7 7 0 0 1 0 10.4.5.5 0 0 1-.7-.7 6 6 0 0 0 0-9 .5.5 0 0 1 .7-.7z"/>
+      </svg>
+      <input type="range" class="vol-slider" id="volumeSlider" min="0" max="100" value="70" aria-label="Volume">
+      <span class="vol-label" id="volLabel">70%</span>
+    </div>
+  </section>
 
   <!-- Presets -->
-  <p class="section-label">Presets</p>
-  <div class="presets" role="group" aria-label="Frequency presets">
-    <button class="preset-btn" data-hz="20"    aria-label="20 Hz"><span class="hz-val">20</span><span class="hz-name">Sub</span></button>
-    <button class="preset-btn" data-hz="60"    aria-label="60 Hz"><span class="hz-val">60</span><span class="hz-name">Bass</span></button>
-    <button class="preset-btn" data-hz="174"   aria-label="174 Hz"><span class="hz-val">174</span><span class="hz-name">Solfège</span></button>
-    <button class="preset-btn" data-hz="285"   aria-label="285 Hz"><span class="hz-val">285</span><span class="hz-name">Solfège</span></button>
-    <button class="preset-btn active" data-hz="440" aria-label="440 Hz, A4"><span class="hz-val">440</span><span class="hz-name">A4</span></button>
-    <button class="preset-btn" data-hz="528"   aria-label="528 Hz"><span class="hz-val">528</span><span class="hz-name">Solfège</span></button>
-    <button class="preset-btn" data-hz="741"   aria-label="741 Hz"><span class="hz-val">741</span><span class="hz-name">Solfège</span></button>
-    <button class="preset-btn" data-hz="1000"  aria-label="1000 Hz"><span class="hz-val">1k</span><span class="hz-name">Mid</span></button>
-    <button class="preset-btn" data-hz="4000"  aria-label="4000 Hz"><span class="hz-val">4k</span><span class="hz-name">High</span></button>
-    <button class="preset-btn" data-hz="10000" aria-label="10000 Hz"><span class="hz-val">10k</span><span class="hz-name">Treble</span></button>
-    <button class="preset-btn" data-hz="15000" aria-label="15000 Hz"><span class="hz-val">15k</span><span class="hz-name">Ultra</span></button>
-    <button class="preset-btn" data-hz="20000" aria-label="20000 Hz"><span class="hz-val">20k</span><span class="hz-name">Max</span></button>
-  </div>
+  <section class="presets-section" aria-label="Frequency presets">
+    <div class="section-label">Presets</div>
 
-  <!-- Custom frequency -->
-  <p class="section-label">Custom Frequency</p>
-  <div class="custom-row">
-    <div class="input-wrap">
-      <input type="number" id="customHz" min="1" max="2000000" step="1"
-             placeholder="e.g. 432" aria-label="Enter custom frequency in Hz" />
-      <span class="input-unit">Hz</span>
+    <div class="preset-group">
+      <div class="preset-group-label">Musical Notes (Equal Temperament)</div>
+      <div class="preset-grid">
+        <button class="preset-btn active" data-freq="440"><span class="preset-hz">440</span><span class="preset-name">A4</span></button>
+        <button class="preset-btn" data-freq="261.63"><span class="preset-hz">261.6</span><span class="preset-name">C4</span></button>
+        <button class="preset-btn" data-freq="293.66"><span class="preset-hz">293.7</span><span class="preset-name">D4</span></button>
+        <button class="preset-btn" data-freq="329.63"><span class="preset-hz">329.6</span><span class="preset-name">E4</span></button>
+        <button class="preset-btn" data-freq="349.23"><span class="preset-hz">349.2</span><span class="preset-name">F4</span></button>
+        <button class="preset-btn" data-freq="392.00"><span class="preset-hz">392</span><span class="preset-name">G4</span></button>
+        <button class="preset-btn" data-freq="493.88"><span class="preset-hz">493.9</span><span class="preset-name">B4</span></button>
+        <button class="preset-btn" data-freq="523.25"><span class="preset-hz">523.3</span><span class="preset-name">C5</span></button>
+      </div>
     </div>
-    <button class="set-btn" id="setBtn" aria-label="Set custom frequency">Set</button>
-  </div>
 
-  <!-- Controls -->
-  <div class="controls">
-    <button class="play-btn" id="playBtn" aria-pressed="false">
-      <span class="btn-icon" id="btnIcon">▶</span>
-      <span id="btnLabel">Play</span>
-    </button>
-    <div class="vol-wrap">
-      <label for="volSlider">Vol</label>
-      <input type="range" id="volSlider" min="0" max="1" step="0.01" value="0.5"
-             orient="vertical" aria-label="Volume" />
+    <div class="preset-group">
+      <div class="preset-group-label">Binaural / Solfeggio</div>
+      <div class="preset-grid">
+        <button class="preset-btn" data-freq="7.83"><span class="preset-hz">7.83</span><span class="preset-name">Schumann</span></button>
+        <button class="preset-btn" data-freq="40"><span class="preset-hz">40</span><span class="preset-name">Gamma</span></button>
+        <button class="preset-btn" data-freq="174"><span class="preset-hz">174</span><span class="preset-name">Foundation</span></button>
+        <button class="preset-btn" data-freq="432"><span class="preset-hz">432</span><span class="preset-name">Cosmic</span></button>
+        <button class="preset-btn" data-freq="528"><span class="preset-hz">528</span><span class="preset-name">Miracle</span></button>
+        <button class="preset-btn" data-freq="852"><span class="preset-hz">852</span><span class="preset-name">Intuition</span></button>
+      </div>
     </div>
-  </div>
 
-  <!-- Wave type -->
-  <p class="section-label" style="margin-top:20px;">Waveform</p>
-  <div class="wave-row" role="group" aria-label="Waveform type">
-    <button class="wave-btn active" data-wave="sine"     aria-pressed="true">Sine</button>
-    <button class="wave-btn"        data-wave="square"   aria-pressed="false">Square</button>
-    <button class="wave-btn"        data-wave="sawtooth" aria-pressed="false">Saw</button>
-    <button class="wave-btn"        data-wave="triangle" aria-pressed="false">Triangle</button>
+    <div class="preset-group">
+      <div class="preset-group-label">Engineering / Test Tones</div>
+      <div class="preset-grid">
+        <button class="preset-btn" data-freq="20"><span class="preset-hz">20</span><span class="preset-name">Sub Bass</span></button>
+        <button class="preset-btn" data-freq="100"><span class="preset-hz">100</span><span class="preset-name">Bass</span></button>
+        <button class="preset-btn" data-freq="1000"><span class="preset-hz">1k</span><span class="preset-name">Mid</span></button>
+        <button class="preset-btn" data-freq="10000"><span class="preset-hz">10k</span><span class="preset-name">High</span></button>
+        <button class="preset-btn" data-freq="18000"><span class="preset-hz">18k</span><span class="preset-name">Ultra</span></button>
+        <button class="preset-btn" data-freq="20000"><span class="preset-hz">20k</span><span class="preset-name">Limit</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Status Bar -->
+  <div class="status-bar" role="status">
+    <div class="status-item">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Idle</span>
+    </div>
+    <div class="status-item">Wave: <span class="status-value" id="statusWave">Sine</span></div>
+    <div class="status-item">Period: <span class="status-value" id="statusPeriod">2.27 ms</span></div>
+    <div class="status-item">λ: <span class="status-value" id="statusWavelength">0.78 m</span></div>
   </div>
 
 </main>
 
-<footer>Web Audio API · No external dependencies</footer>
-
 <script>
-  /* ─── State ─────────────────────────────────────────────────── */
-  let audioCtx    = null;
-  let oscillator  = null;
-  let gainNode    = null;
-  let analyser    = null;
-  let animFrameId = null;
-  let isPlaying   = false;
-  let currentHz   = 440;
-  let currentWave = 'sine';
+(function () {
+  'use strict';
 
-  /* ─── DOM refs ──────────────────────────────────────────────── */
-  const playBtn    = document.getElementById('playBtn');
-  const btnIcon    = document.getElementById('btnIcon');
-  const btnLabel   = document.getElementById('btnLabel');
-  const freqBadge  = document.getElementById('freqBadge');
-  const vizWrap    = document.getElementById('vizWrap');
-  const canvas     = document.getElementById('viz');
-  const ctx2d      = canvas.getContext('2d');
-  const volSlider  = document.getElementById('volSlider');
-  const customHz   = document.getElementById('customHz');
-  const setBtn     = document.getElementById('setBtn');
-  const presetBtns = document.querySelectorAll('.preset-btn');
-  const waveBtns   = document.querySelectorAll('.wave-btn');
+  // State
+  let freq      = 440;
+  let waveType  = 'sine';
+  let playing   = false;
+  let vol       = 0.70;
+  let audioCtx  = null;
+  let osc       = null;
+  let gain      = null;
+  let rafId     = null;
+  let phase     = 0;
+  let lastTs    = null;
 
-  /* ─── Canvas resize ─────────────────────────────────────────── */
+  // DOM
+  const freqReadout   = document.getElementById('freqReadout');
+  const freqNote      = document.getElementById('freqNote');
+  const freqDisplay   = document.getElementById('freqDisplay');
+  const freqInput     = document.getElementById('freqInput');
+  const freqSlider    = document.getElementById('freqSlider');
+  const volSlider     = document.getElementById('volumeSlider');
+  const volLabel      = document.getElementById('volLabel');
+  const playBtn       = document.getElementById('playBtn');
+  const iconPlay      = document.getElementById('iconPlay');
+  const iconPause     = document.getElementById('iconPause');
+  const applyBtn      = document.getElementById('applyBtn');
+  const inputError    = document.getElementById('inputError');
+  const statusDot     = document.getElementById('statusDot');
+  const statusText    = document.getElementById('statusText');
+  const statusWave    = document.getElementById('statusWave');
+  const statusPeriod  = document.getElementById('statusPeriod');
+  const statusLambda  = document.getElementById('statusWavelength');
+  const scopeCanvas   = document.getElementById('scope');
+  const waveBtns      = document.querySelectorAll('.wave-btn');
+  const presetBtns    = document.querySelectorAll('.preset-btn');
+
+  // Canvas
+  const dpr = window.devicePixelRatio || 1;
+  const ctx  = scopeCanvas.getContext('2d');
+
   function resizeCanvas() {
-    canvas.width  = vizWrap.clientWidth  * devicePixelRatio;
-    canvas.height = vizWrap.clientHeight * devicePixelRatio;
+    const w = scopeCanvas.parentElement.clientWidth - 24;
+    const h = window.innerWidth <= 440 ? 90 : 120;
+    scopeCanvas.width  = Math.round(w * dpr);
+    scopeCanvas.height = Math.round(h * dpr);
+    scopeCanvas.style.height = h + 'px';
   }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
 
-  /* ─── Frequency badge ───────────────────────────────────────── */
-  function updateBadge(hz) {
-    const display = hz >= 1000 ? (hz/1000).toFixed(hz % 1000 === 0 ? 0 : 1) + 'k' : hz;
-    const unit    = hz >= 1000 ? 'kHz' : 'Hz';
-    freqBadge.innerHTML = `${display}<small>${unit}</small>`;
-  }
-  updateBadge(currentHz);
-
-  /* ─── Set frequency (live or on next play) ──────────────────── */
-  function setFrequency(hz, fromPreset = false) {
-    hz = Math.min(2000000, Math.max(1, hz));
-    currentHz = hz;
-    updateBadge(hz);
-    if (oscillator) oscillator.frequency.setTargetAtTime(hz, audioCtx.currentTime, 0.02);
-
-    // highlight matching preset (only when triggered by a preset button)
-    presetBtns.forEach(b => {
-      const active = fromPreset && Number(b.dataset.hz) === hz;
-      b.classList.toggle('active', active);
-      b.setAttribute('aria-pressed', String(active));
-    });
-
-    // sync input field only when a preset was clicked
-    if (fromPreset) customHz.value = hz;
+  // Utilities
+  function fmtFreq(f) {
+    if (f >= 1e6)  return (f / 1e6).toFixed(f % 1e6 === 0 ? 0 : 2) + ' MHz';
+    if (f >= 1000) return (f / 1000).toFixed(f % 1000 === 0 ? 0 : f % 100 === 0 ? 1 : 2) + ' kHz';
+    return parseFloat(f.toFixed(2)).toString() + ' Hz';
   }
 
-  /* ─── Audio context init ─────────────────────────────────────── */
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const NOTE_DESC  = { A4:'Concert Pitch', C4:'Middle C', C5:'Tenor High C', E4:'Guitar High E' };
+
+  function freqToNote(f) {
+    if (f < 16 || f > 8000) return '';
+    const semi = 12 * Math.log2(f / 440);
+    const r    = Math.round(semi);
+    const cents = Math.round((semi - r) * 100);
+    const ni  = ((r % 12) + 12) % 12;
+    const oct = 4 + Math.floor((r + 9) / 12);
+    const name = NOTE_NAMES[ni] + oct;
+    const cs   = cents === 0 ? '' : cents > 0 ? ` +${cents}¢` : ` ${cents}¢`;
+    const desc = NOTE_DESC[name] ? ` — ${NOTE_DESC[name]}` : '';
+    return name + cs + desc;
+  }
+
+  function fmtPeriod(f) {
+    const p = 1 / f;
+    if (p < 1e-3) return (p * 1e6).toFixed(1) + ' µs';
+    if (p < 1)    return (p * 1e3).toFixed(2) + ' ms';
+    return p.toFixed(3) + ' s';
+  }
+
+  function fmtWavelength(f) {
+    const w = 343 / f;
+    if (w < 0.01)   return (w * 100).toFixed(2) + ' cm';
+    if (w >= 1000)  return (w / 1000).toFixed(1) + ' km';
+    return w.toFixed(2) + ' m';
+  }
+
+  // Slider ↔ freq (logarithmic mapping)
+  const LOG_MAX = Math.log10(2e6);
+  function sliderToFreq(v)  { return Math.pow(10, (v / 1000) * LOG_MAX); }
+  function freqToSlider(f)  { return (Math.log10(f) / LOG_MAX) * 1000; }
+
+  function setSliderFill(el, pct) { el.style.setProperty('--fill', pct.toFixed(1) + '%'); }
+
+  // Update all displays from a frequency value
+  function applyFreq(f, skipSlider) {
+    freq = f;
+    freqReadout.textContent = fmtFreq(f);
+    freqNote.textContent    = freqToNote(f) || '\u00A0';
+    statusPeriod.textContent = fmtPeriod(f);
+    statusLambda.textContent = fmtWavelength(f);
+    if (!skipSlider) {
+      freqSlider.value = freqToSlider(f).toFixed(2);
+    }
+    setSliderFill(freqSlider, (parseFloat(freqSlider.value) / 10));
+    // Preset highlight
+    presetBtns.forEach(b => b.classList.toggle('active', Math.abs(parseFloat(b.dataset.freq) - f) < 0.02));
+    // Live oscillator update
+    if (osc && gain) osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.01);
+  }
+
+  // Audio
   function initAudio() {
     if (audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    gainNode = audioCtx.createGain();
-    gainNode.gain.value = parseFloat(volSlider.value);
-
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-
-    gainNode.connect(analyser);
-    analyser.connect(audioCtx.destination);
+    gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    gain.connect(audioCtx.destination);
   }
 
-  /* ─── Play ───────────────────────────────────────────────────── */
   function startTone() {
     initAudio();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-
-    oscillator = audioCtx.createOscillator();
-    oscillator.type      = currentWave;
-    oscillator.frequency.value = currentHz;
-    oscillator.connect(gainNode);
-    oscillator.start();
-
-    isPlaying = true;
-    playBtn.classList.add('playing');
-    playBtn.setAttribute('aria-pressed', 'true');
-    btnIcon.textContent  = '⏸';
-    btnLabel.textContent = 'Pause';
-    vizWrap.classList.add('playing');
-    startViz();
+    if (osc) { try { osc.stop(); } catch(e){} osc.disconnect(); osc = null; }
+    osc = audioCtx.createOscillator();
+    osc.type = waveType;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    osc.start();
+    gain.gain.cancelScheduledValues(audioCtx.currentTime);
+    gain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.025);
   }
 
-  /* ─── Pause ──────────────────────────────────────────────────── */
   function stopTone() {
-    if (oscillator) {
-      oscillator.stop();
-      oscillator.disconnect();
-      oscillator = null;
+    if (!gain) return;
+    gain.gain.cancelScheduledValues(audioCtx.currentTime);
+    gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.025);
+    const captured = osc;
+    setTimeout(() => {
+      if (captured) { try { captured.stop(); } catch(e){} captured.disconnect(); }
+      if (osc === captured) osc = null;
+    }, 200);
+  }
+
+  function togglePlay() {
+    playing = !playing;
+    if (playing) {
+      startTone();
+      playBtn.classList.add('playing');
+      freqDisplay.classList.add('playing');
+      freqReadout.classList.add('playing');
+      iconPlay.style.display   = 'none';
+      iconPause.style.display  = 'block';
+      statusDot.classList.add('active');
+      statusText.textContent   = 'Playing';
+      playBtn.setAttribute('aria-label', 'Pause frequency tone');
+    } else {
+      stopTone();
+      playBtn.classList.remove('playing');
+      freqDisplay.classList.remove('playing');
+      freqReadout.classList.remove('playing');
+      iconPlay.style.display   = 'block';
+      iconPause.style.display  = 'none';
+      statusDot.classList.remove('active');
+      statusText.textContent   = 'Idle';
+      playBtn.setAttribute('aria-label', 'Play frequency tone');
     }
-    isPlaying = false;
-    playBtn.classList.remove('playing');
-    playBtn.setAttribute('aria-pressed', 'false');
-    btnIcon.textContent  = '▶';
-    btnLabel.textContent = 'Play';
-    vizWrap.classList.remove('playing');
-    cancelAnimationFrame(animFrameId);
-    drawIdle();
   }
 
-  /* ─── Visualiser: idle waveform ──────────────────────────────── */
-  function drawIdle() {
-    const W = canvas.width, H = canvas.height;
-    ctx2d.clearRect(0, 0, W, H);
-    ctx2d.strokeStyle = '#2e2e2e';
-    ctx2d.lineWidth   = 2 * devicePixelRatio;
-    ctx2d.beginPath();
-    ctx2d.moveTo(0, H/2);
-    ctx2d.lineTo(W, H/2);
-    ctx2d.stroke();
-  }
-  drawIdle();
+  // Validation
+  function showErr(msg) { inputError.textContent = msg; freqInput.classList.add('invalid'); }
+  function clearErr()   { inputError.textContent = '';  freqInput.classList.remove('invalid'); }
 
-  /* ─── Visualiser: live oscilloscope ─────────────────────────── */
-  function startViz() {
-    const bufLen = analyser.frequencyBinCount;
-    const buf    = new Uint8Array(bufLen);
-
-    function draw() {
-      animFrameId = requestAnimationFrame(draw);
-      analyser.getByteTimeDomainData(buf);
-
-      const W = canvas.width, H = canvas.height;
-      ctx2d.clearRect(0, 0, W, H);
-
-      // glow trail
-      ctx2d.shadowBlur  = 14 * devicePixelRatio;
-      ctx2d.shadowColor = '#4caf50';
-      ctx2d.strokeStyle = '#4caf50';
-      ctx2d.lineWidth   = 2.5 * devicePixelRatio;
-      ctx2d.lineJoin    = 'round';
-      ctx2d.beginPath();
-
-      const sliceW = W / bufLen;
-      let x = 0;
-      for (let i = 0; i < bufLen; i++) {
-        const v = buf[i] / 128.0;
-        const y = (v * H) / 2;
-        if (i === 0) ctx2d.moveTo(x, y);
-        else         ctx2d.lineTo(x, y);
-        x += sliceW;
-      }
-      ctx2d.lineTo(W, H / 2);
-      ctx2d.stroke();
-      ctx2d.shadowBlur = 0;
-    }
-    draw();
-  }
-
-  /* ─── Event: Play / Pause button ─────────────────────────────── */
-  playBtn.addEventListener('click', () => {
-    isPlaying ? stopTone() : startTone();
-  });
-
-  /* ─── Event: Volume ──────────────────────────────────────────── */
-  volSlider.addEventListener('input', () => {
-    if (gainNode) gainNode.gain.setTargetAtTime(parseFloat(volSlider.value), audioCtx.currentTime, 0.01);
-  });
-
-  /* ─── Event: Preset buttons ──────────────────────────────────── */
-  presetBtns.forEach(btn => {
-    btn.addEventListener('click', () => setFrequency(Number(btn.dataset.hz), true));
-  });
-
-  /* ─── Event: Custom frequency set ───────────────────────────── */
   function applyCustom() {
-    const val = parseFloat(customHz.value);
-    if (!isNaN(val) && val >= 1 && val <= 2000000) {
-      setFrequency(val, false); // clears all preset highlights, doesn't touch the input
+    const raw = freqInput.value.trim();
+    if (!raw) { showErr('Please enter a frequency value.'); return; }
+    const f = parseFloat(raw);
+    if (isNaN(f) || f < 1 || f > 2000000) {
+      showErr('Enter a value between 1 and 2,000,000 Hz.'); return;
     }
+    clearErr();
+    applyFreq(f);
   }
 
-  setBtn.addEventListener('click', applyCustom);
-  customHz.addEventListener('keydown', e => { if (e.key === 'Enter') applyCustom(); });
+  // Oscilloscope
+  function drawScope(ts) {
+    rafId = requestAnimationFrame(drawScope);
+    const W = scopeCanvas.width, H = scopeCanvas.height;
+    ctx.clearRect(0, 0, W, H);
 
-  /* ─── Event: Waveform buttons ────────────────────────────────── */
+    // Grid lines
+    ctx.strokeStyle = 'rgba(76,175,80,0.07)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 8; i++) {
+      const x = (W / 8) * i;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let i = 0; i <= 4; i++) {
+      const y = (H / 4) * i;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    // Centre axis
+    ctx.strokeStyle = 'rgba(76,175,80,0.14)';
+    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+
+    // Phase advance
+    const dt = lastTs ? (ts - lastTs) / 1000 : 0;
+    lastTs = ts;
+    if (playing) phase = (phase + dt * freq * Math.PI * 2) % (Math.PI * 2);
+
+    const amp    = playing ? 0.42 : 0.16;
+    const cycles = Math.max(2, Math.min(8, Math.log10(Math.max(freq, 1)) * 1.6));
+
+    ctx.beginPath();
+    ctx.strokeStyle = playing ? '#4caf50' : 'rgba(76,175,80,0.3)';
+    ctx.lineWidth   = 1.5 * dpr;
+    ctx.shadowBlur  = playing ? 8 * dpr : 0;
+    ctx.shadowColor = '#4caf50';
+    ctx.lineJoin    = 'round';
+
+    for (let i = 0; i <= W; i++) {
+      const t = (i / W) * cycles * Math.PI * 2 + phase;
+      let y;
+      switch (waveType) {
+        case 'sine':     y = Math.sin(t); break;
+        case 'square':   y = Math.sign(Math.sin(t)); break;
+        case 'sawtooth': y = ((t % (Math.PI * 2)) / (Math.PI * 2)) * 2 - 1; break;
+        case 'triangle': y = (2 / Math.PI) * Math.asin(Math.sin(t)); break;
+        default:         y = Math.sin(t);
+      }
+      const py = H / 2 + y * amp * H;
+      i === 0 ? ctx.moveTo(0, py) : ctx.lineTo(i, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  requestAnimationFrame(drawScope);
+
+  // Event Listeners
+  playBtn.addEventListener('click', togglePlay);
+  applyBtn.addEventListener('click', applyCustom);
+  freqInput.addEventListener('keydown', e => { if (e.key === 'Enter') applyCustom(); });
+  freqInput.addEventListener('input', () => {
+    const f = parseFloat(freqInput.value);
+    if (!isNaN(f) && f >= 1 && f <= 2000000) clearErr();
+  });
+
+  freqSlider.addEventListener('input', () => {
+    const f = sliderToFreq(parseFloat(freqSlider.value));
+    const rounded = parseFloat(f.toFixed(f < 10 ? 2 : f < 100 ? 1 : 0));
+    freqInput.value = '';
+    clearErr();
+    applyFreq(rounded, true);
+    setSliderFill(freqSlider, parseFloat(freqSlider.value) / 10);
+  });
+
+  volSlider.addEventListener('input', () => {
+    vol = parseFloat(volSlider.value) / 100;
+    volLabel.textContent = volSlider.value + '%';
+    setSliderFill(volSlider, parseFloat(volSlider.value));
+    if (gain && playing) gain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.02);
+  });
+
   waveBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       waveBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
       btn.classList.add('active');
-      btn.setAttribute('aria-pressed', 'true');
-      currentWave = btn.dataset.wave;
-      if (oscillator) oscillator.type = currentWave;
+      btn.setAttribute('aria-pressed','true');
+      waveType = btn.dataset.wave;
+      statusWave.textContent = waveType.charAt(0).toUpperCase() + waveType.slice(1);
+      if (playing) {
+        stopTone();
+        setTimeout(startTone, 80);
+      }
     });
   });
 
-  /* ─── Resume AudioContext on user gesture (iOS) ──────────────── */
-  document.addEventListener('touchstart', () => {
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  }, { once: true });
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const f = parseFloat(btn.dataset.freq);
+      freqInput.value = '';
+      clearErr();
+      applyFreq(f);
+    });
+  });
+
+  // Init
+  applyFreq(440);
+  setSliderFill(volSlider, 70);
+
+})();
 </script>
 </body>
 </html>
